@@ -11,10 +11,10 @@ struct GameFilter: CustomStringConvertible, Equatable {
         }
         let minPlayers = game.stats?.minplayers ?? 0
         let maxPlayers = game.stats?.maxplayers ?? Int.max
-        let minTime = game.stats?.minplaytime ?? 0
-        let maxTime = game.stats?.maxplaytime ?? Int.max
+        let minTime = game.stats?.minplaytime ?? time?.lowerBound ?? 0
+        let maxTime = game.stats?.maxplaytime ?? time?.upperBound ?? Int.max
         let matchesPlayers = players == nil || players! >= minPlayers && players! <= maxPlayers
         let matchesTime = time == nil || time!.lowerBound <= minTime && maxTime <= time!.upperBound
         return matchesPlayers && matchesTime
     }
-    }
+}
