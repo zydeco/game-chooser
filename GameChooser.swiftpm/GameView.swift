@@ -3,76 +3,83 @@ import SwiftUI
 struct GameView: View {
     @Environment(\.openURL) var openURL
     @ScaledMetric var iconWidth: CGFloat = 30.0
+    @ScaledMetric var spaceBetweenTitleAndContent: CGFloat = 6.0
+    @State var infoHeight: CGFloat = 140.0
 
     var game: BoardGameGeek.Item
     var body: some View {
         HStack {
-            Spacer()
-            VStack {
+            VStack(spacing: spaceBetweenTitleAndContent) {
                 Text(verbatim: game.name)
                     .font(.title)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
 
-                // stats
-                HStack {
-                    AsyncImage(url: game.image) { image in
-                        image.resizable().aspectRatio(contentMode: .fit)
-                    } placeholder: {
-                        Color.gray.aspectRatio(1.0, contentMode: .fill)
-                    }.frame(width: 140, height: 140)
+                GeometryReader { geometry in
+                    HStack(spacing: .zero) {
+                        HStack {
+                            AsyncImage(url: game.image) { image in
+                                image.resizable().aspectRatio(contentMode: .fit)
+                            } placeholder: {
+                                Color.gray.aspectRatio(1.0, contentMode: .fill)
+                            }.frame(width: infoHeight, height: infoHeight, alignment: .center)
+                        }.frame(width: geometry.size.width / 2.0, height: infoHeight, alignment: .trailing)
 
-                    Spacer()
-                    VStack(alignment: .leading) {
-                        if let rating = game.stats?.rating?.average {
-                            HStack {
-                                Image(systemName: "star.fill")
-                                    .frame(width: iconWidth)
-                                Text(rating.formatted(.number.precision(.significantDigits(2))))
-                            }
-                        }
-                        if let year = game.yearpublished {
-                            HStack {
-                                Image(systemName: "calendar")
-                                    .frame(width: iconWidth)
-                                Text("\(year, format: .number.grouping(.never))")
-                            }
-                        }
-                        if let min = game.stats?.minplayers, let max = game.stats?.maxplayers {
-                            HStack {
-                                Image(systemName: max == 1 ? "person" : max == 2 ? "person.2" : "person.3")
-                                    .frame(width: iconWidth)
-                                if min == max {
-                                    Text("\(min)")
-                                } else {
-                                    Text("\(min) to \(max)")
+                        VStack(alignment: .leading, spacing: 5) {
+                            if let rating = game.stats?.rating?.average {
+                                HStack {
+                                    Image(systemName: "star.fill")
+                                        .frame(width: iconWidth)
+                                    Text(rating.formatted(.number.precision(.significantDigits(2))))
+                                    Spacer()
                                 }
                             }
 
-                        }
-                        if let min = game.stats?.minplaytime, let max = game.stats?.maxplaytime {
-                            HStack {
-                                Image(systemName: "clock")
-                                    .frame(width: iconWidth)
-                                if min == max {
-                                    Text(formatMinutes(min))
-                                } else {
-                                    Text("\(formatMinutes(min))–\(formatMinutes(max))")
+                            if let min = game.stats?.minplayers, let max = game.stats?.maxplayers {
+                                HStack {
+                                    Image(systemName: max == 1 ? "person" : max == 2 ? "person.2" : "person.3")
+                                        .frame(width: iconWidth)
+                                    if min == max {
+                                        Text("\(min)")
+                                    } else {
+                                        Text("\(min) to \(max)")
+                                    }
+                                }
+
+                            }
+
+                            if let min = game.stats?.minplaytime, let max = game.stats?.maxplaytime {
+                                HStack {
+                                    Image(systemName: "clock")
+                                        .frame(width: iconWidth)
+                                    if min == max {
+                                        Text(formatMinutes(min))
+                                    } else {
+                                        Text("\(formatMinutes(min))–\(formatMinutes(max))")
+                                    }
                                 }
                             }
-                        }
+
+                            if let year = game.yearpublished {
+                                HStack {
+                                    Image(systemName: "calendar")
+                                        .frame(width: iconWidth)
+                                    Text("\(year, format: .number.grouping(.never))")
+                                }
+                            }
+                        }.frame(width: geometry.size.width / 2.0)
+                            .padding([.leading], iconWidth)
                     }
-                    Spacer()
+
+                    .font(.title3)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                }.frame(height: infoHeight)
+                }.onTapGesture {
+                    if let gameUrl = URL(string: "https://boardgamegeek.com/boardgame/\(game.objectid)") {
+                        openURL(gameUrl)
+                    }
                 }
-                .font(.title3)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-            }.onTapGesture {
-                if let gameUrl = URL(string: "https://boardgamegeek.com/boardgame/\(game.objectid)") {
-                    openURL(gameUrl)
-                }
-            }
-            Spacer()
         }
     }
 }
@@ -92,7 +99,8 @@ struct GameView: View {
                         minplaytime: 30,
                         maxplaytime: 60,
                         rating: BoardGameGeek.Item.Stats.Rating(average: 8.5)
-                        )
+                        ),
+                    status: BoardGameGeek.Item.Status(own: 1)
                     )
              )
 }
