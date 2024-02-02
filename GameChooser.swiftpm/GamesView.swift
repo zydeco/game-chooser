@@ -3,16 +3,17 @@ import SwiftUI
 struct GamesView: View {
     @Binding var collections: [(id: UUID, name: String)]
     @State var games: [BoardGameGeek.Collection] = []
-    @State var playerOptions: ClosedRange<Int> = 1...8
+    @State var playerOptions: ClosedRange<Int> = 1...GameFilter.maxPlayers
     @State var timeOptions = [15, 30, 60, 120, 240]
     @State var filteredGames: [BoardGameGeek.Item] = []
     @State var showingSort = false
-    @State var showingFilter = false
+    @State var showingPlayers = false
+    @State var showingTime = false
     @State var filter = GameFilter()
     @State var toLoad = 0
     @State var sorters: [GameSorter] = [
-        GameSorter(name: "Name", enabled: true) { $0.name.compare($1.name) },
-        GameSorter(name: "BGG Rating", order: .reverse) { compare($0.stats?.rating?.average, $1.stats?.rating?.average, default:.zero) },
+        GameSorter(name: "Name") { $0.name.compare($1.name) },
+        GameSorter(name: "BGG Rating", order: .reverse, enabled: true) { compare($0.stats?.rating?.average, $1.stats?.rating?.average, default:.zero) },
         GameSorter(name: "Year Published", order: .reverse) { compare($0.yearpublished, $1.yearpublished, default:.zero) }
         // TODO: best with this number of players
         // TODO: complexity
@@ -56,7 +57,7 @@ struct GamesView: View {
             Button(action: {
                 showingSort = !showingSort
             }, label: {
-                Text("Sort")
+                Image(systemName: "arrowtriangle.\(currentSorter.order == .forward ? "up" : "down").circle")
             }).popover(isPresented: $showingSort, arrowEdge: .top, content: {
                 VStack(alignment: .leading, spacing: 8.0) {
                     ForEach(sorters) { sorter in
@@ -78,18 +79,72 @@ struct GamesView: View {
                 }.padding()
                 .presentationCompactAdaptation(.popover)
             })
+
             Button(action: {
-                showingFilter = !showingFilter
+                showingPlayers = !showingPlayers
             }, label: {
-                Text("Filter")
-            }).popover(isPresented: $showingFilter, arrowEdge: .top, content: {
-                FilterView(playersRange: $playerOptions, timeOptions: $timeOptions, filter: $filter)
-                    .frame(minWidth: 375.0, minHeight: 360.0, maxHeight: .infinity)
-                    .presentationDragIndicator(.visible)
-                    .presentationDetents([.height(360.0)])
-                    .presentationBackgroundInteraction(.enabled)
-                    .background(Color(.systemGroupedBackground))
-            })
+                Image(systemName: "person.3")
+            }).popover(isPresented: $showingPlayers, arrowEdge: .top) {
+                VStack(alignment: .leading, spacing: 8.0) {
+                    Label {
+                        Text("Any")
+                    } icon: {
+                        Image(systemName: filter.players == nil ? "checkmark.circle" : "circle")
+                    }.onTapGesture {
+                        filter.players = nil
+                        showingPlayers = false
+                    }
+                    ForEach(playerOptions.filter({ $0 < GameFilter.maxPlayers }).map({ $0 }), id: \.self) { option in
+                        Label {
+                            Text(option, format: .number.grouping(.never))
+                        } icon: {
+                            Image(systemName: filter.players == option ? "checkmark.circle" : "circle")
+                        }.onTapGesture {
+                            filter.players = option
+                            showingPlayers = false
+                        }
+                    }
+                    if playerOptions.contains(where: { $0 > GameFilter.maxPlayers }) {
+                        Label {
+                            Text("\(GameFilter.maxPlayers)+")
+                        } icon: {
+                            Image(systemName: filter.players == GameFilter.maxPlayers ? "checkmark.circle" : "circle")
+                        }.onTapGesture {
+                            filter.players = GameFilter.maxPlayers
+                            showingPlayers = false
+                        }
+                    }
+                }.padding()
+                .presentationCompactAdaptation(.popover)
+            }
+
+            Button(action: {
+                showingTime = !showingTime
+            }, label: {
+                Image(systemName: "clock")
+            }).popover(isPresented: $showingTime, arrowEdge: .top) {
+                VStack(alignment: .leading, spacing: 8.0) {
+                    Label {
+                        Text("Any")
+                    } icon: {
+                        Image(systemName: filter.time == nil ? "checkmark.circle" : "circle")
+                    }.onTapGesture {
+                        filter.time = nil
+                        showingTime = false
+                    }
+                    ForEach(timeOptions, id: \.self) { minutes in
+                        Label {
+                            Text(formatMinutes(minutes))
+                        } icon: {
+                            Image(systemName: filter.time?.upperBound == minutes ? "checkmark.circle" : "circle")
+                        }.onTapGesture {
+                            filter.time = 0...minutes
+                            showingTime = false
+                        }
+                    }
+                }.padding()
+                    .presentationCompactAdaptation(.popover)
+            }
         })
         .task {
             toLoad = collections.count
