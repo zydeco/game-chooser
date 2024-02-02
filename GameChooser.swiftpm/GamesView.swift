@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct GamesView: View {
+    // default max age for cached data
+    private static let defaultMaxAge: TimeInterval = 86400
+
     @Binding var collections: [(id: UUID, name: String)]
     @State var games: [BoardGameGeek.Collection] = []
     @State var playerOptions: ClosedRange<Int> = 1...GameFilter.maxPlayers
@@ -147,24 +150,10 @@ struct GamesView: View {
             }
         })
         .task {
-            toLoad = collections.count
-            let names = collections.map({$0.name}).filter({ !$0.isEmpty })
-            for name in names {
-                if let collection = await BoardGameGeek.fetchGameCollection(username: name) {
-                    toLoad -= 1
-                    games.append(collection)
-                    totalGames = Set(games.flatMap({ $0.items }).filter({ $0.status?.own == 1 }).map({ $0.id })).count
-                    filteredGames = filterGames(games, with: filter, sortedBy: currentSorter)
-                    playerOptions = getPlayerOptions(games: games.flatMap({ $0.items }))
-                    timeOptions = getTimeOptions(games: games.flatMap({ $0.items }))
-                    if toLoad == 0 {
-                        addToHistory(names: names)
-                    }
-                } else {
-                    // error?
-                    toLoad -= 1
-                }
-            }
+            await loadCollections(maxAge: GamesView.defaultMaxAge)
+        }
+        .refreshable {
+            await loadCollections(maxAge: 0)
         }
     }
 
@@ -182,6 +171,28 @@ struct GamesView: View {
         }
         showingSort = false
         filteredGames = filterGames(games, with: filter, sortedBy: currentSorter)
+    }
+
+    private func loadCollections(maxAge: TimeInterval) async {
+        games = []
+        toLoad = collections.count
+        let names = collections.map({$0.name}).filter({ !$0.isEmpty })
+        for name in names {
+            if let collection = await BoardGameGeek.fetchGameCollection(username: name, maxAge: maxAge) {
+                toLoad -= 1
+                games.append(collection)
+                totalGames = Set(games.flatMap({ $0.items }).filter({ $0.status?.own == 1 }).map({ $0.id })).count
+                filteredGames = filterGames(games, with: filter, sortedBy: currentSorter)
+                playerOptions = getPlayerOptions(games: games.flatMap({ $0.items }))
+                timeOptions = getTimeOptions(games: games.flatMap({ $0.items }))
+                if toLoad == 0 {
+                    addToHistory(names: names)
+                }
+            } else {
+                // error?
+                toLoad -= 1
+            }
+        }
     }
 }
 

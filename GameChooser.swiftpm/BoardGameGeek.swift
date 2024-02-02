@@ -131,20 +131,38 @@ struct BoardGameGeek {
         }
     }
 
-    static func fetchGameCollection(username: String, withBackoff backoff: Duration = .seconds(0.5)) async -> BoardGameGeek.Collection? {
+    private static func loadFromCacheIfAvailable(url: URL, maxAge: TimeInterval?) async throws -> (Data, URLResponse) {
+        let request = URLRequest(url: url)
+        let cachedResponse = URLCache.shared.cachedResponse(for: request)
+        if let cachedResponse,
+           let httpResponse = cachedResponse.response as? HTTPURLResponse,
+           httpResponse.statusCode == 200,
+           let date = responseDate(httpResponse),
+           maxAge == nil || Date.now.timeIntervalSince(date) <= maxAge!  {
+            return (cachedResponse.data, httpResponse)
+        }
+        do {
+            return try await URLSession.shared.data(from: url)
+        } catch {
+            guard let cachedResponse else {
+                throw error
+            }
+            return (cachedResponse.data, cachedResponse.response)
+        }
+    }
+
+    static func fetchGameCollection(username: String, maxAge: TimeInterval, withBackoff backoff: Duration = .seconds(0.5)) async -> BoardGameGeek.Collection? {
         guard let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed), !username.isEmpty else {
             return nil
         }
         let url = URL(string: "https://boardgamegeek.com/xmlapi2/collection?username=\(encodedUsername)&excludesubtype=boardgameexpansion&stats=1")!
-        let session = URLSession.shared
-        let request = URLRequest(url: url)
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await loadFromCacheIfAvailable(url: url, maxAge: maxAge)
             if let httpResponse = response as? HTTPURLResponse {
                 switch httpResponse.statusCode {
                 case 202:
                     try! await Task.sleep(for: backoff)
-                    return await fetchGameCollection(username: username, withBackoff: backoff*2)
+                    return await fetchGameCollection(username: username, maxAge: maxAge, withBackoff: backoff*2)
                 case 200:
                     if let collection = try? XMLDecoder().decode(Collection.self, from: data) {
                         return collection
@@ -160,5 +178,14 @@ struct BoardGameGeek {
         } catch {
             return nil
         }
+    }
+
+    private static func responseDate(_ response: HTTPURLResponse) -> Date? {
+        guard let dateHeader = response.value(forHTTPHeaderField: "Date") else {
+            return nil
+        }
+        let httpDateFormatter = DateFormatter()
+        httpDateFormatter.dateFormat = "EEEE, dd LLL yyyy HH:mm:ss zzz"
+        return httpDateFormatter.date(from: dateHeader)
     }
 }
