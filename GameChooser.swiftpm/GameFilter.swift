@@ -18,4 +18,28 @@ struct GameFilter: CustomStringConvertible, Equatable {
         let matchesTime = time == nil || time!.lowerBound <= minTime && maxTime <= time!.upperBound
         return matchesPlayers && matchesTime
     }
+
+    var displayDescription: String? {
+        guard players != nil || time != nil else {
+            return nil
+        }
+        var descriptions: [String] = []
+        if players == GameFilter.maxPlayers {
+            descriptions.append("for \(GameFilter.maxPlayers)+ players")
+        } else if players == 1 {
+            descriptions.append("for 1 player")
+        } else if let players {
+            descriptions.append("for \(players) players")
+        }
+
+        if let time {
+            if time.lowerBound == 0 {
+                descriptions.append("in \(formatMinutes(time.upperBound))")
+            } else {
+                descriptions.append("in \(formatMinutes(time))")
+            }
+        }
+
+        return descriptions.joined(separator: " ")
+    }
 }

@@ -41,7 +41,7 @@ struct GamesView: View {
                 case filteredGames.count:
                     Text("\(totalGames) games")
                 default:
-                    Text("\(filteredGames.count) of \(totalGames) games")
+                    Text("\(filteredGames.count) of \(totalGames) games \(filter.displayDescription ?? "")")
                 }
             } footer: {
                 HStack {

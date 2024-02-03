@@ -67,3 +67,12 @@ func formatMinutes(_ minutes: Int) -> String {
     }
 }
 
+func formatMinutes(_ range: ClosedRange<Int>) -> String {
+    let min = range.lowerBound
+    let max = range.upperBound
+    if min == max {
+        return formatMinutes(min)
+    } else {
+        return "\(formatMinutes(min))–\(formatMinutes(max))"
+    }
+}

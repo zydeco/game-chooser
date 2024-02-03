@@ -52,11 +52,7 @@ struct GameView: View {
                                 HStack {
                                     Image(systemName: "clock")
                                         .frame(width: iconWidth)
-                                    if min == max {
-                                        Text(formatMinutes(min))
-                                    } else {
-                                        Text("\(formatMinutes(min))–\(formatMinutes(max))")
-                                    }
+                                    Text("\(formatMinutes(min...max))")
                                 }
                             }
 
