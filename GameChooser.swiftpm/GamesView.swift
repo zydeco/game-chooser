@@ -27,6 +27,7 @@ struct GamesView: View {
     var currentSorter: GameSorter { sorters.first(where: { $0.enabled }) ?? sorters[0] }
 
     var body: some View {
+        // MARK: List
         List {
             Section {
                 ForEach(filteredGames) { GameView(game: $0).alignmentGuide(.listRowSeparatorLeading) { _ in return 0 } }
@@ -57,6 +58,7 @@ struct GamesView: View {
         })
         .navigationTitle("Games")
         .toolbar(content: {
+            // MARK: Sort
             Button(action: {
                 showingSort = !showingSort
             }, label: {
@@ -83,6 +85,7 @@ struct GamesView: View {
                 .presentationCompactAdaptation(.popover)
             })
 
+            // MARK: Players
             Button(action: {
                 showingPlayers = !showingPlayers
             }, label: {
@@ -121,31 +124,14 @@ struct GamesView: View {
                 .presentationCompactAdaptation(.popover)
             }
 
+            // MARK: Time
             Button(action: {
                 showingTime = !showingTime
             }, label: {
                 Image(systemName: "clock")
             }).popover(isPresented: $showingTime, arrowEdge: .top) {
-                VStack(alignment: .leading, spacing: 8.0) {
-                    Label {
-                        Text("Any")
-                    } icon: {
-                        Image(systemName: filter.time == nil ? "checkmark.circle" : "circle")
-                    }.onTapGesture {
-                        filter.time = nil
-                        showingTime = false
-                    }
-                    ForEach(timeOptions, id: \.self) { minutes in
-                        Label {
-                            Text(formatMinutes(minutes))
-                        } icon: {
-                            Image(systemName: filter.time?.upperBound == minutes ? "checkmark.circle" : "circle")
-                        }.onTapGesture {
-                            filter.time = 0...minutes
-                            showingTime = false
-                        }
-                    }
-                }.padding()
+                TimeFilterChooser(filter: $filter, showingTime: $showingTime, timeOptions: timeOptions)
+                    .padding()
                     .presentationCompactAdaptation(.popover)
             }
         })
