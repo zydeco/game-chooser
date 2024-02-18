@@ -5,8 +5,9 @@ struct GameView: View {
     @ScaledMetric var iconWidth: CGFloat = 30.0
     @ScaledMetric var spaceBetweenTitleAndContent: CGFloat = 6.0
     @State var infoHeight: CGFloat = 140.0
-
+    
     var game: BoardGameGeek.Item
+    var image: CGImage?
     var body: some View {
         HStack {
             VStack(spacing: spaceBetweenTitleAndContent) {
@@ -18,11 +19,18 @@ struct GameView: View {
                 GeometryReader { geometry in
                     HStack(spacing: .zero) {
                         HStack {
-                            AsyncImage(url: game.image) { image in
-                                image.resizable().aspectRatio(contentMode: .fit)
-                            } placeholder: {
-                                Color.gray.aspectRatio(1.0, contentMode: .fill)
-                            }.frame(width: infoHeight, height: infoHeight, alignment: .center)
+                            if let image {
+                                Image(decorative: image, scale: 1.0)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: infoHeight, height: infoHeight, alignment: .center)
+                            } else {
+                                AsyncImage(url: game.image) { image in
+                                    image.resizable().aspectRatio(contentMode: .fit)
+                                } placeholder: {
+                                    Color.gray.aspectRatio(1.0, contentMode: .fill)
+                                }.frame(width: infoHeight, height: infoHeight, alignment: .center)
+                            }
                         }.frame(width: geometry.size.width / 2.0, height: infoHeight, alignment: .trailing)
 
                         VStack(alignment: .leading, spacing: 5) {

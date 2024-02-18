@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct GamesView: View {
     // default max age for cached data
@@ -141,6 +142,67 @@ struct GamesView: View {
         .refreshable {
             await loadCollections(maxAge: 0)
         }
+        .onAppear {
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                scene.screenshotService?.delegate = ScreenshotAdapter.shared
+                ScreenshotAdapter.shared.generator = { screenshot($0) }
+            }
+        }
+    }
+
+    private func loadImages(games: [BoardGameGeek.Item]) async -> [Int: CGImage] {
+        var images: [Int: CGImage] = [:]
+        games.forEach { game in
+            if let imageUrl = game.image,
+               let data = try? Data(contentsOf: imageUrl)
+            {
+                if let image = UIImage(data: data) {
+                    images[game.id] = image.cgImage
+                }
+            }
+        }
+        return images
+    }
+
+    func screenshot(_ completionHandler: @escaping (Data?, Int, CGRect) -> Void) {
+        Task.detached {
+            let images = await loadImages(games: filteredGames)
+            DispatchQueue.main.async {
+                let result = takeScreenshot(images: images)
+                completionHandler(result.0, result.1, result.2)
+            }
+        }
+    }
+
+    @MainActor func takeScreenshot(images: [Int: CGImage]) -> (pdf: Data, page: Int, visibleRect: CGRect) {
+        let renderer = ImageRenderer(content: VStack {
+            Text("\(filteredGames.count) of \(totalGames) games \(filter.displayDescription ?? "")")
+
+            ForEach(filteredGames) {
+                Text("⎯").foregroundStyle(.tertiary)
+                GameView(game: $0, image: images[$0.id])
+            }
+
+            Image(uiImage: #imageLiteral(resourceName: "bgg")).resizable().scaledToFit().frame(height: 42)
+        }
+            .frame(width: 430.0)
+            .padding()
+        )
+        let data = CFDataCreateMutable(kCFAllocatorDefault, 0)!
+        var pdfRect: CGRect?
+        renderer.render { size, context in
+            var box = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+            guard let pdf = CGContext(consumer: CGDataConsumer(data: data)!, mediaBox: &box, nil) else {
+                return
+            }
+            pdfRect = CGRect(x: 0, y: size.height - 2*size.width, width: size.width, height: 2*size.width)
+            pdf.beginPDFPage(nil)
+            context(pdf)
+            pdf.endPDFPage()
+            pdf.closePDF()
+        }
+
+        return (data as Data, 0, pdfRect ?? .zero)
     }
 
     func chooseSorter(_ id: String) {
