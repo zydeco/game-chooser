@@ -31,7 +31,15 @@ struct GamesView: View {
         // MARK: List
         List {
             Section {
-                ForEach(filteredGames) { GameView(game: $0).alignmentGuide(.listRowSeparatorLeading) { _ in return 0 } }
+                ForEach(filteredGames) { game in
+                    GameView(game: game)
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button("Hide") {
+                                filteredGames.removeAll(where: { $0.id == game.id })
+                            }.tint(.red)
+                        }
+                }
             } header: {
                 switch (totalGames) {
                 case 0:
@@ -54,7 +62,8 @@ struct GamesView: View {
                     Spacer()
                 }
             }
-        }.onChange(of: filter, { oldValue, newValue in
+        }
+        .onChange(of: filter, { oldValue, newValue in
             filteredGames = filterGames(games, with: filter, sortedBy: currentSorter)
         })
         .navigationTitle("Games")
