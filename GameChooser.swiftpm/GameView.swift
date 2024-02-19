@@ -13,7 +13,6 @@ struct GameView: View {
             VStack(spacing: spaceBetweenTitleAndContent) {
                 Text(verbatim: game.name)
                     .font(.title)
-                    .lineLimit(2)
                     .multilineTextAlignment(.center)
 
                 GeometryReader { geometry in
